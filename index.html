@@ -33,7 +33,22 @@
     if (res.error) { showAdminMsg(res.error.message, 'warn'); return; }
     setMainStateFromData(res.data || {});
     renderAllAdmin();
+    showAdminMsg(state.isMainAdmin ? '메인관리자로 로그인했습니다.' : '일반관리자로 로그인했습니다.', 'success');
   };
+
+  const oldAdminLogin = window.adminLogin;
+  window.adminLogin = async function(){
+    const pin = $('adminPin').value.trim();
+    const check = await db.rpc('verify_admin_pin', { p_pin: pin });
+    if (check.error || !check.data) { showAdminMsg('PIN을 확인해 주세요.', 'warn'); return; }
+    state.adminPin = pin;
+    $('adminLoginBox').classList.add('hidden');
+    $('adminPanel').classList.remove('hidden');
+    await loadAdminData();
+    showAdminPanel('members');
+  };
+  const loginBtn = $('adminLoginBtn');
+  if (loginBtn) loginBtn.onclick = adminLogin;
 
   window.renderMembers = function(){
     const list = memberFiltered();
@@ -104,7 +119,7 @@
     if (state._mainCheckedFor === state.adminPin) return;
     state._mainCheckedFor = state.adminPin;
     const res = await db.rpc('get_admin_alumni_app_data', { p_pin: state.adminPin });
-    if (!res.error) { setMainStateFromData(res.data || {}); renderAllAdmin(); }
+    if (!res.error) { setMainStateFromData(res.data || {}); renderAllAdmin(); showAdminMsg(state.isMainAdmin ? '메인관리자로 로그인했습니다.' : '일반관리자로 로그인했습니다.', 'success'); }
   }, 800);
 })();
 ` + '<' + '/script>';
