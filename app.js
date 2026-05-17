@@ -1,5 +1,5 @@
-const SUPABASE_URL='YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY='YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL='https://alumni-supabase/web/app.js';
+const SUPABASE_ANON_KEY='eyJ...';
 
 const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
