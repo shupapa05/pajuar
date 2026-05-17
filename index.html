@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>경인교대 파주동문회</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -39,7 +42,7 @@ function fill(id,label,items){$(id).innerHTML='<option value="">'+label+'</optio
 function activeEvent(){return S.events.find(function(e){return e.id===S.summary.event_id})||S.events.find(function(e){return e.active})||S.events[0]||null}
 async function loadPublic(){var d=await rpc('get_public_alumni_app_data');S.settings=d.settings||{};S.notices=d.notices||[];S.events=d.events||[];S.schools=(d.schools||[]).map(function(x){return x.name||x});S.summary=d.attendance_summary||{};renderPublic()}
 function renderPublic(){$('name').textContent=S.settings.alumni_name||'경인교대 파주동문회';$('year').textContent=(S.settings.current_year||new Date().getFullYear())+'년도';$('stTotal').textContent=S.summary.total==null?'-':S.summary.total;$('stAttend').textContent=S.summary.attend==null?'-':S.summary.attend;$('stAbsent').textContent=S.summary.absent==null?'-':S.summary.absent;$('stPending').textContent=S.summary.pending==null?'-':S.summary.pending;$('schoolList').innerHTML=S.schools.map(function(s){return '<option value="'+esc(s)+'"></option>'}).join('');renderNotices();renderEventBox()}
-function view(v){if(v==='admin'&&!isAdmin){window.open(location.pathname+'?admin=1','_blank','noopener');return}['notices','register','attendance','admin'].forEach(function(x){$(x+'View').classList.toggle('hidden',x!==v)});document.querySelectorAll('[data-view]').forEach(function(b){b.classList.toggle('active',b.dataset.view===v)})}
+function view(v){if(v==='admin'&&!isAdmin){window.open(location.pathname+'?admin=1&v=20260518b','_blank','noopener');return}['notices','register','attendance','admin'].forEach(function(x){$(x+'View').classList.toggle('hidden',x!==v)});document.querySelectorAll('[data-view]').forEach(function(b){b.classList.toggle('active',b.dataset.view===v)})}
 function renderNotices(){$('noticesView').innerHTML='<h2>공지사항</h2>'+(S.notices.length?S.notices.map(function(n){return '<article class="notice"><h3>'+esc(n.title)+'</h3><div class="muted">'+date(n.created_at)+'</div><p>'+esc(n.content||'')+'</p>'+(n.file_url?'<a target="_blank" href="'+esc(n.file_url)+'">첨부파일 보기'+(n.file_name?': '+esc(n.file_name):'')+'</a>':'')+'</article>'}).join(''):'<p>등록된 공지가 없습니다.</p>')}
 function renderEventBox(){var e=activeEvent();$('eventBox').innerHTML=e?'<h3>'+esc(e.title)+'</h3><p>'+date(e.event_date)+(e.place?' · '+esc(e.place):'')+'</p><p>'+esc(e.content||'')+'</p>':'<p>현재 등록된 행사가 없습니다.</p>'}
 async function guide(){var e=activeEvent();if(!e||!e.pdf_file_url){alert('행사안내가 없습니다.');return}window.open(e.pdf_file_url,'_blank')}
