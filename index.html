@@ -17,22 +17,21 @@
         let html=await fetch(source,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('load failed');return r.text()});
         const patch=`<script>
 (function(){
+  function ready(){return typeof db!=='undefined' && typeof state!=='undefined' && typeof $!=='undefined'}
   function wait(fn){let count=0;const timer=setInterval(function(){count++;try{if(fn()){clearInterval(timer)}}catch(e){}if(count>80)clearInterval(timer)},250)}
-  function setTextSafe(id,text){const el=document.getElementById(id);if(el)el.textContent=text}
   wait(function(){
-    if(!window.db || !window.state || !window.$) return false;
+    if(!ready()) return false;
     const phone=document.getElementById('regPhone');
     if(phone) phone.placeholder='예: 010-0000-0000';
     const pin=document.getElementById('adminPin');
-    if(pin && !pin.dataset.enterReady){pin.dataset.enterReady='1';pin.addEventListener('keydown',function(e){if(e.key==='Enter' && window.adminLogin) window.adminLogin()})}
+    if(pin && !pin.dataset.enterReady){pin.dataset.enterReady='1';pin.addEventListener('keydown',function(e){if(e.key==='Enter' && typeof adminLogin==='function') adminLogin()})}
     return true;
   });
   wait(function(){
-    if(!window.db || !window.state || !window.$ || !window.renderMembers || !window.loadAdminData) return false;
-    const oldLoad=window.loadAdminData;
+    if(!ready() || typeof renderMembers!=='function' || typeof loadAdminData!=='function') return false;
     window.loadAdminData=async function(){
       const res=await db.rpc('get_admin_alumni_app_data',{p_pin:state.adminPin});
-      if(res.error){ if(window.showAdminMsg) showAdminMsg(res.error.message,'warn'); return; }
+      if(res.error){ if(typeof showAdminMsg==='function') showAdminMsg(res.error.message,'warn'); return; }
       const d=res.data||{};
       state.isMainAdmin=!!d.is_main_admin;
       state.adminMembers=d.members||d.adminMembers||d.memberList||state.adminMembers||state.members||[];
@@ -41,23 +40,23 @@
       state.adminEvents=d.events||state.adminEvents||[];
       state.feeUses=d.fee_uses||state.feeUses||[];
       state.attendanceList=d.attendance_list||state.attendanceList||[];
-      if(window.renderAllAdmin) renderAllAdmin(); else renderMembers();
-      if(window.showAdminMsg) showAdminMsg(state.isMainAdmin?'메인관리자로 로그인했습니다.':'일반관리자로 로그인했습니다.','success');
+      if(typeof renderAllAdmin==='function') renderAllAdmin(); else renderMembers();
+      if(typeof showAdminMsg==='function') showAdminMsg(state.isMainAdmin?'메인관리자로 로그인했습니다.':'일반관리자로 로그인했습니다.','success');
     };
     window.adminLogin=async function(){
       const pin=$('adminPin').value.trim();
       const ok=await db.rpc('verify_admin_pin',{p_pin:pin});
-      if(ok.error||!ok.data){ if(window.showAdminMsg) showAdminMsg('PIN을 확인해 주세요.','warn'); return; }
+      if(ok.error||!ok.data){ if(typeof showAdminMsg==='function') showAdminMsg('PIN을 확인해 주세요.','warn'); return; }
       state.adminPin=pin;
       const box=$('adminLoginBox'); if(box) box.classList.add('hidden');
       const panel=$('adminPanel'); if(panel) panel.classList.remove('hidden');
-      await loadAdminData();
-      if(window.showAdminPanel) showAdminPanel('members');
+      await window.loadAdminData();
+      if(typeof showAdminPanel==='function') showAdminPanel('members');
     };
     const btn=document.getElementById('adminLoginBtn'); if(btn) btn.onclick=window.adminLogin;
-    const oldRender=window.renderMembers;
+    const originalRender=renderMembers;
     window.renderMembers=function(){
-      oldRender();
+      originalRender();
       const isMain=!!state.isMainAdmin;
       const table=document.getElementById('memberTableBody');
       if(!table) return;
@@ -87,10 +86,10 @@
       const school=prompt('학교',m.school||m.org||''); if(school===null)return;
       const phone=prompt('연락처',m.phone||''); if(phone===null)return;
       const res=await db.rpc('admin_update_member',{p_pin:state.adminPin,p_member_id:id,p_name:name,p_student_no:student,p_position:position,p_school:school,p_phone:phone});
-      if(res.error){showAdminMsg(res.error.message,'warn');return} await loadAdminData(); showAdminMsg('회원 정보를 수정했습니다.','success');
+      if(res.error){showAdminMsg(res.error.message,'warn');return} await window.loadAdminData(); showAdminMsg('회원 정보를 수정했습니다.','success');
     };
-    window.hideMemberMain=async function(id){if(!confirm('이 회원을 명단에서 숨길까요?'))return;const res=await db.rpc('admin_hide_member',{p_pin:state.adminPin,p_member_id:id});if(res.error){showAdminMsg(res.error.message,'warn');return}await loadAdminData();showAdminMsg('회원을 숨김 처리했습니다.','success')};
-    window.deleteMemberMain=async function(id){if(!confirm('이 회원을 완전히 삭제할까요?'))return;if(!confirm('정말 삭제합니다. 복구가 어렵습니다.'))return;const res=await db.rpc('admin_delete_member',{p_pin:state.adminPin,p_member_id:id});if(res.error){showAdminMsg(res.error.message,'warn');return}await loadAdminData();showAdminMsg('회원을 삭제했습니다.','success')};
+    window.hideMemberMain=async function(id){if(!confirm('이 회원을 명단에서 숨길까요?'))return;const res=await db.rpc('admin_hide_member',{p_pin:state.adminPin,p_member_id:id});if(res.error){showAdminMsg(res.error.message,'warn');return}await window.loadAdminData();showAdminMsg('회원을 숨김 처리했습니다.','success')};
+    window.deleteMemberMain=async function(id){if(!confirm('이 회원을 완전히 삭제할까요?'))return;if(!confirm('정말 삭제합니다. 복구가 어렵습니다.'))return;const res=await db.rpc('admin_delete_member',{p_pin:state.adminPin,p_member_id:id});if(res.error){showAdminMsg(res.error.message,'warn');return}await window.loadAdminData();showAdminMsg('회원을 삭제했습니다.','success')};
     return true;
   });
 })();
