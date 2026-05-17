@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>결산보고서</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef2f7;color:#172033;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.app{width:min(1040px,calc(100% - 28px));margin:0 auto;padding:24px 0 48px}.card{background:#fff;border:1px solid #d8dee8;border-radius:8px;padding:20px;margin-top:14px}h1,h2,h3{margin:0}h1{font-size:30px}h2{text-align:center;margin:0 0 28px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.top{display:flex;justify-content:space-between;gap:12px;align-items:center}input,button{font:inherit;min-height:42px;border-radius:8px}input{border:1px solid #cbd5e1;padding:8px 10px}button{border:0;background:#176b87;color:#fff;font-weight:800;padding:9px 15px;cursor:pointer}.light{background:#e9edf3;color:#172033}.msg{margin-top:12px;padding:11px 13px;border-radius:8px;background:#fff4d8;color:#7a4b00;font-weight:800}.ok{background:#e7f7ed;color:#126233}.bad{background:#fee2e2;color:#991b1b}.paper{background:#fff;border:1px solid #d7dce5;padding:34px;min-width:760px}.wrap{overflow:auto}.paper h3{margin:26px 0 10px}.report-table{width:100%;border-collapse:collapse;margin-bottom:18px}.report-table th,.report-table td{border:1px solid #666;padding:10px;text-align:left}.report-table th{background:#f1f3f6;text-align:center}.summary th{width:35%}@media print{body{background:#fff}.no-print{display:none!important}.app{width:100%;padding:0}.card{border:0;margin:0;padding:0}.paper{border:0;min-width:0;padding:20px}}
+</style>
+</head>
+<body>
+<main class="app">
+<section class="card no-print">
+  <div class="top"><div><h1>결산보고서</h1><p>관리자 PIN을 입력하면 현재 회비 자료로 결산보고서를 만듭니다.</p></div><a href="./" class="light" style="padding:10px 14px;border-radius:8px;text-decoration:none;font-weight:800">메인으로</a></div>
+  <div class="row"><input id="pin" type="password" placeholder="관리자 PIN"><button id="loadBtn">불러오기</button><button id="printBtn" class="light">PDF로 저장</button></div>
+  <div id="msg" class="msg" style="display:none"></div>
+</section>
+<section class="card"><div class="wrap"><div id="paper" class="paper"><h2>결산보고서</h2><p>자료를 불러와 주세요.</p></div></div></section>
+</main>
+<script>
+const db=supabase.createClient('https://lemwzcchuazqpsyzsoff.supabase.co','sb_publishable_dXOuhuPizNsQgCXtqQYY4A_DBk6WCGV');
+const $=id=>document.getElementById(id);
+let state={settings:{},feeUses:[],feeSummary:{}};
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function money(v){return Number(v||0).toLocaleString()}
+function msg(t,cls){const el=$('msg');el.style.display=t?'block':'none';el.className='msg '+(cls||'');el.textContent=t||''}
+function combineRows(rows){const map={};rows.forEach(r=>{const key=[r.category||'',r.subcategory||'',r.item||'',r.note||''].join('||');if(!map[key])map[key]={category:r.category||'',subcategory:r.subcategory||'',item:r.item||'',income:0,expense:0,note:r.note||''};map[key].income+=Number(r.income||0);map[key].expense+=Number(r.expense||0)});return Object.values(map)}
+function reportRows(){const paid=Number(state.feeSummary.paid_amount||0);const fee={category:'수입',subcategory:'회비',item:`${state.settings.current_year||''}년도 회비`,income:paid,expense:0,note:'회비납부 관리 기준 자동 집계'};const income=combineRows([fee,...state.feeUses.filter(u=>Number(u.income||0)>0)]);const expense=combineRows(state.feeUses.filter(u=>Number(u.expense||0)>0));const incomeTotal=income.reduce((s,x)=>s+Number(x.income||0),0);const expenseTotal=expense.reduce((s,x)=>s+Number(x.expense||0),0);return{income,expense,incomeTotal,expenseTotal,balance:incomeTotal-expenseTotal}}
+function table(rows,type){if(!rows.length)return '<p>내역이 없습니다.</p>';return `<table class="report-table"><thead><tr><th>관</th><th>항</th><th>목</th><th>금액</th><th>비고</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.category)}</td><td>${esc(x.subcategory)}</td><td>${esc(x.item)}</td><td>${money(type==='income'?x.income:x.expense)}원</td><td>${esc(x.note)}</td></tr>`).join('')}</tbody></table>`}
+function render(){const r=reportRows();$('paper').innerHTML=`<h2>${state.settings.current_year||''}년도 결산보고서</h2><h3>1. 수입 내역</h3>${table(r.income,'income')}<h3>2. 지출 내역</h3>${table(r.expense,'expense')}<h3>3. 결산 요약</h3><table class="report-table summary"><tbody><tr><th>총 수입</th><td>${money(r.incomeTotal)}원</td></tr><tr><th>총 지출</th><td>${money(r.expenseTotal)}원</td></tr><tr><th>잔액</th><td>${money(r.balance)}원</td></tr></tbody></table>`}
+async function load(){try{msg('불러오는 중입니다.');const {data,error}=await db.rpc('get_admin_alumni_app_data',{p_pin:$('pin').value.trim()});if(error)throw error;state.settings=data.settings||{};state.feeUses=data.fee_uses||[];state.feeSummary=data.fee_summary||{};render();msg('결산보고서를 만들었습니다. PDF로 저장을 누르면 저장 창이 열립니다.','ok')}catch(e){msg(e.message||'자료를 불러오지 못했습니다.','bad')}}
+$('loadBtn').onclick=load;$('printBtn').onclick=()=>window.print();$('pin').onkeydown=e=>{if(e.key==='Enter')load()};
+</script>
+</body>
+</html>
