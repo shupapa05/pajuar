@@ -12,6 +12,93 @@
 <body>
   <div class="loading">동문회 화면을 불러오는 중입니다...</div>
   <script>
+    const memberAdminPatch = String.raw`
+<script>
+(function(){
+  const oldLoadAdminData = window.loadAdminData;
+  window.loadAdminData = async function(){
+    const res = await db.rpc('get_admin_alumni_app_data', { p_pin: state.adminPin });
+    if (res.error) { showAdminMsg(res.error.message, 'warn'); return; }
+    const data = res.data || {};
+    Object.assign(state, {
+      isMainAdmin: !!data.is_main_admin,
+      adminNotices: data.notices || [],
+      adminEvents: data.events || [],
+      adminMembers: data.members || [],
+      feeSummary: data.fee_summary || {},
+      feeUses: data.fee_uses || [],
+      settlement: data.settlement_summary || {},
+      attendanceAdmin: data.attendance_summary || {},
+      attendanceList: data.attendance_list || []
+    });
+    renderAllAdmin();
+  };
+
+  window.renderMembers = function(){
+    const list = memberFiltered();
+    const isMain = !!state.isMainAdmin;
+    const table = $('memberTableBody') && $('memberTableBody').closest('table');
+    if (table) {
+      table.querySelector('thead tr').innerHTML = '<th>직위</th><th>성명</th><th>기수</th><th>학번</th><th>전화번호</th><th>대의원</th>' + (isMain ? '<th>관리</th>' : '');
+    }
+    $('memberSummary').innerHTML = '<span>전체 <b>' + list.length + '</b>명</span><span>교장 <b>' + list.filter(m=>m.position==='교장').length + '</b>명</span><span>교감 <b>' + list.filter(m=>m.position==='교감').length + '</b>명</span><span>교사 <b>' + list.filter(m=>m.position==='교사').length + '</b>명</span>';
+    if (!list.length) { $('memberTableBody').innerHTML = '<tr><td colspan="' + (isMain ? 7 : 6) + '">회원이 없습니다.</td></tr>'; return; }
+    let last = '', html = '';
+    list.forEach(function(m){
+      const school = m.school || '학교 미입력';
+      if (school !== last) {
+        const members = list.filter(x => (x.school || '학교 미입력') === school);
+        html += '<tr class="group-row"><td colspan="' + (isMain ? 7 : 6) + '"><div class="group-title"><span>' + esc(school) + '</span><small>' + groupCounts(members, 'position') + '</small></div></td></tr>';
+        last = school;
+      }
+      html += '<tr><td>' + esc(m.position || '') + '</td><td>' + esc(m.name || '') + '</td><td>' + esc(m.generation || '') + '기</td><td>' + esc(m.student_no || '') + '</td><td>' + esc(m.phone || '') + '</td><td><button class="light" onclick="toggleDelegate(\'' + m.member_id + '\',\'' + (m.delegate ? '' : 'Y') + '\')"><span class="' + (m.delegate ? 'badge delegate' : '') + '">' + (m.delegate ? '대의원' : '일반') + '</span></button></td>';
+      if (isMain) {
+        html += '<td><button class="light" onclick="adminEditMember(\'' + m.member_id + '\')">수정</button> <button class="secondary" onclick="adminHideMember(\'' + m.member_id + '\')">숨김</button> <button class="danger" onclick="adminDeleteMember(\'' + m.member_id + '\')">삭제</button></td>';
+      }
+      html += '</tr>';
+    });
+    $('memberTableBody').innerHTML = html;
+  };
+
+  window.adminEditMember = async function(id){
+    if (!state.isMainAdmin) { showAdminMsg('회원명단 관리는 메인관리자만 가능합니다.', 'warn'); return; }
+    const m = (state.adminMembers || []).find(x => String(x.member_id) === String(id));
+    if (!m) { showAdminMsg('회원을 찾을 수 없습니다.', 'warn'); return; }
+    const name = prompt('이름', m.name || ''); if (name === null) return;
+    const studentNo = prompt('학번', m.student_no || ''); if (studentNo === null) return;
+    const position = prompt('직위', m.position || ''); if (position === null) return;
+    const school = prompt('학교', m.school || ''); if (school === null) return;
+    const phone = prompt('연락처', m.phone || ''); if (phone === null) return;
+    const res = await db.rpc('admin_update_member', { p_pin: state.adminPin, p_member_id: id, p_name: name, p_student_no: studentNo, p_position: position, p_school: school, p_phone: phone });
+    if (res.error) { showAdminMsg(res.error.message, 'warn'); return; }
+    await loadAdminData();
+    await loadApp();
+    showAdminMsg('회원 정보가 수정되었습니다.', 'success');
+  };
+
+  window.adminHideMember = async function(id){
+    if (!state.isMainAdmin) { showAdminMsg('회원 숨김은 메인관리자만 가능합니다.', 'warn'); return; }
+    if (!confirm('이 회원을 명단에서 숨길까요? 숨김 처리하면 집계와 참석현황에서도 제외됩니다.')) return;
+    const res = await db.rpc('admin_hide_member', { p_pin: state.adminPin, p_member_id: id });
+    if (res.error) { showAdminMsg(res.error.message, 'warn'); return; }
+    await loadAdminData();
+    await loadApp();
+    showAdminMsg('회원이 숨김 처리되었습니다.', 'success');
+  };
+
+  window.adminDeleteMember = async function(id){
+    if (!state.isMainAdmin) { showAdminMsg('회원 삭제는 메인관리자만 가능합니다.', 'warn'); return; }
+    if (!confirm('완전히 삭제할까요? 회비와 참석 기록도 함께 삭제됩니다. 보통은 숨김 처리를 권장합니다.')) return;
+    if (!confirm('정말 완전 삭제합니다. 복구할 수 없습니다.')) return;
+    const res = await db.rpc('admin_delete_member', { p_pin: state.adminPin, p_member_id: id });
+    if (res.error) { showAdminMsg(res.error.message, 'warn'); return; }
+    await loadAdminData();
+    await loadApp();
+    showAdminMsg('회원이 완전히 삭제되었습니다.', 'success');
+  };
+})();
+<\/script>`;
+
     fetch('https://raw.githubusercontent.com/shupapa05/pajuar/3f001b15fe4b36c6b7b2fac32be59ed39845a7ed/index.html', { cache: 'no-store' })
       .then(function(res) {
         if (!res.ok) throw new Error('load failed');
@@ -22,6 +109,7 @@
           'id="regPhone" inputmode="tel" autocomplete="tel"',
           'id="regPhone" inputmode="tel" autocomplete="tel" placeholder="예: 010-0000-0000"'
         );
+        html = html.replace('</body>', memberAdminPatch + '</body>');
         document.open();
         document.write(html);
         document.close();
