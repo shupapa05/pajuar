@@ -1,5 +1,6 @@
-const SUPABASE_URL='https://alumni-supabase/web/app.js';
-const SUPABASE_ANON_KEY='eyJ...';
+const SUPABASE_URL='https://lemwzcchuazqpsyzsoff.supabase.co';
+
+const SUPABASE_ANON_KEY='sb_publishable_dXOuhuPizNsQgCXtqQYY4A_DBk6WCGV';
 
 const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
