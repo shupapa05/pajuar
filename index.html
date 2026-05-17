@@ -4,25 +4,64 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>경인교대 파주동문회</title>
-  <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f6f8;color:#182230}*{box-sizing:border-box}body{margin:0}.app{width:min(980px,calc(100% - 28px));margin:0 auto;padding:24px 0 40px}.topbar{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:20px;background:#fff;border:1px solid #d8dee8;border-radius:8px}h1,h2,h3,p{margin:0}h1{font-size:clamp(24px,3vw,34px);line-height:1.2}h2{margin-bottom:16px;font-size:22px}h3{font-size:18px}p,time,.year-label,.empty{color:#5d6878}.year-label{margin-bottom:4px;font-weight:700}button{min-height:44px;border:0;border-radius:8px;padding:10px 16px;background:#176b87;color:#fff;font:inherit;font-weight:800;cursor:pointer}button:hover{background:#12576e}button:disabled{opacity:.65;cursor:wait}button.secondary{background:#4b5565}.guide-button{min-width:112px}.status-band{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin:14px 0;overflow:hidden;border:1px solid #d8dee8;border-radius:8px;background:#d8dee8}.status-band div{display:grid;gap:3px;min-height:70px;padding:12px;background:#fff}.status-band span{color:#667085;font-size:14px;font-weight:700}.status-band strong{font-size:24px}.actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}.actions button{background:#27364a}.actions button.active{background:#176b87}.panel{padding:20px;background:#fff;border:1px solid #d8dee8;border-radius:8px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}.wide{grid-column:1/-1}label{display:grid;gap:6px;font-weight:800}input,select{width:100%;min-height:42px;border:1px solid #c7d0dd;border-radius:8px;padding:8px 10px;background:#fff;color:#182230;font:inherit}input:focus,select:focus{outline:3px solid #c9edf5;border-color:#176b87}.agree{display:flex;align-items:center;gap:8px;margin:4px 0 16px}.agree input{width:18px;min-height:18px}.notice-list{display:grid;gap:10px}.notice,.event-summary{display:grid;gap:8px;padding:14px;border:1px solid #e2e8f0;border-radius:8px;background:#fbfcfe}.notice a{color:#176b87;font-weight:800}.attendance-actions{display:flex;gap:10px;flex-wrap:wrap}.message{margin-bottom:14px;padding:12px 14px;border-radius:8px;background:#fff7d6;color:#5c4700;font-weight:700}.message[data-tone=success]{background:#e7f7ed;color:#126233}.message[data-tone=warn]{background:#fff0e8;color:#8a3a12}.hidden{display:none}@media(max-width:640px){.topbar,.actions,.form-grid,.status-band{grid-template-columns:1fr}.topbar{display:grid}.attendance-actions button,.guide-button{width:100%}}
+  </style>
 </head>
 <body>
-  <main class="wrap">
-    <section class="hero card">
-      <h1 id="alumniName">경인교대 파주동문회</h1>
-      <p class="muted">공지사항은 누구나 볼 수 있고, 회원은 올해 정보만 등록합니다.</p>
-      <div class="row center">
-        <button onclick="showView('register')">회원등록</button>
-        <button onclick="showView('attendance')">행사참석</button>
-        <button onclick="showView('admin')">관리자</button>
-      </div>
+  <main class="app">
+    <header class="topbar">
+      <div><p id="currentYear" class="year-label">불러오는 중</p><h1 id="appName">경인교대 파주동문회</h1></div>
+      <button id="eventGuideBtn" class="guide-button" type="button">행사 안내</button>
+    </header>
+    <section class="status-band" aria-label="행사 참석 현황">
+      <div><span>전체</span><strong id="summaryTotal">-</strong></div>
+      <div><span>참석</span><strong id="summaryAttend">-</strong></div>
+      <div><span>불참</span><strong id="summaryAbsent">-</strong></div>
+      <div><span>미응답</span><strong id="summaryPending">-</strong></div>
     </section>
-    <section class="card"><h2>공지사항</h2><div id="noticeList" class="muted">불러오는 중...</div></section>
-    <section id="register" class="card hidden"><h2>회원등록</h2><input id="regName" placeholder="이름"><input id="regStudentNo" placeholder="학번 예: 99"><input id="regPhone" placeholder="연락처"><select id="regPosition"><option value="">직위 선택</option><option>교사</option><option>교감</option><option>교장</option><option>늘봄실장</option><option>장학사</option><option>장학관</option></select><select id="regSchool"></select><label class="check"><input id="regAgree" type="checkbox"> 개인정보 수집 및 활용 동의</label><div class="row"><button onclick="registerMember()">등록</button><button class="light" onclick="showView('home')">닫기</button></div><div id="registerMsg" class="msg"></div></section>
-    <section id="attendance" class="card hidden"><h2>행사참석</h2><select id="attEvent"></select><input id="attName" placeholder="이름"><div class="row"><button onclick="saveAttendance('참석')">참석</button><button onclick="saveAttendance('불참')">불참</button><button class="light" onclick="showView('home')">닫기</button></div><div id="attendanceMsg" class="msg"></div></section>
-    <section id="admin" class="card hidden"><h2>관리자</h2><input id="adminPin" type="password" placeholder="관리자 PIN"><button onclick="adminLogin()">로그인</button><div id="adminPanel" class="hidden"><h3>회원명단</h3><div id="memberList"></div><h3>공지 작성</h3><input id="noticeTitle" placeholder="제목"><textarea id="noticeContent" placeholder="내용"></textarea><button onclick="saveNotice()">공지 저장</button><h3>행사 작성</h3><input id="eventTitle" placeholder="행사명"><input id="eventDate" type="date"><input id="eventPlace" placeholder="장소"><textarea id="eventContent" placeholder="내용"></textarea><input id="eventFileUrl" placeholder="안내자료 URL"><button onclick="saveEvent()">행사 저장</button></div><div id="adminMsg" class="msg"></div></section>
+    <nav class="actions" aria-label="주요 메뉴">
+      <button data-view="notices" type="button">공지사항</button>
+      <button data-view="register" type="button">회원 등록</button>
+      <button data-view="attendance" type="button">행사 참석</button>
+    </nav>
+    <section id="message" class="message hidden" role="status"></section>
+    <section id="noticesView" class="panel"></section>
+    <section id="registerView" class="panel hidden">
+      <h2>회원 등록</h2>
+      <div class="form-grid">
+        <label>이름<input id="regName" autocomplete="name"></label>
+        <label>학번<input id="regStudentNo" inputmode="numeric"></label>
+        <label>직위<select id="regPosition"><option value="">선택</option><option>교사</option><option>교감</option><option>교장</option><option>장학사</option><option>기타</option></select></label>
+        <label>현재 학교<input id="regSchool" list="schoolOptions"></label>
+        <label class="wide">연락처<input id="regPhone" inputmode="tel" autocomplete="tel"></label>
+      </div>
+      <datalist id="schoolOptions"></datalist>
+      <label class="agree"><input id="regAgree" type="checkbox"> 개인정보 수집 및 이용에 동의합니다.</label>
+      <button id="registerBtn" type="button">등록하기</button>
+    </section>
+    <section id="attendanceView" class="panel hidden"><h2>행사 참석</h2><div id="eventBox"></div></section>
   </main>
-  <script src="app.js"></script>
+  <script>
+    const db=window.supabase.createClient('https://lemwzcchuazqpsyzsoff.supabase.co','sb_publishable_dXOuhuPizNsQgCXtqQYY4A_DBk6WCGV');
+    const state={settings:{},notices:[],events:[],schools:[],attendanceSummary:null,activeEvent:null};
+    const $=id=>document.getElementById(id);
+    function showMessage(text,tone='info'){const el=$('message');if(!text){el.classList.add('hidden');el.textContent='';return}el.textContent=text;el.dataset.tone=tone;el.classList.remove('hidden')}
+    function switchView(name){['notices','register','attendance'].forEach(v=>$(`${v}View`).classList.toggle('hidden',v!==name));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name))}
+    async function loadApp(){showMessage('');const {data,error}=await db.rpc('get_public_alumni_app_data');if(error)throw error;state.settings=data?.settings||{};state.notices=data?.notices||[];state.events=data?.events||[];state.schools=data?.schools||[];state.attendanceSummary=data?.attendance_summary||null;state.activeEvent=findActiveEvent();renderHeader();renderSummary();renderSchoolOptions();renderNotices();renderAttendance()}
+    function findActiveEvent(){if(state.attendanceSummary?.event_id){const e=state.events.find(x=>x.id===state.attendanceSummary.event_id);if(e)return e}return state.events.find(e=>e.active)||state.events[0]||null}
+    function renderHeader(){$('appName').textContent=state.settings.alumni_name||'경인교대 파주동문회';$('currentYear').textContent=`${state.settings.current_year||new Date().getFullYear()}년도`}
+    function renderSummary(){const s=state.attendanceSummary||{};$('summaryTotal').textContent=s.total??'-';$('summaryAttend').textContent=s.attend??'-';$('summaryAbsent').textContent=s.absent??'-';$('summaryPending').textContent=s.pending??'-'}
+    function renderSchoolOptions(){$('schoolOptions').innerHTML=state.schools.map(s=>`<option value="${esc(s.name||'')}"></option>`).join('')}
+    function renderNotices(){const box=$('noticesView');if(!state.notices.length){box.innerHTML='<p class="empty">등록된 공지사항이 없습니다.</p>';return}box.innerHTML='<h2>공지사항</h2><div class="notice-list">'+state.notices.map(n=>{const d=n.created_at?new Date(n.created_at).toLocaleDateString('ko-KR'):'';return `<article class="notice"><div><h3>${esc(n.title||'')}</h3>${d?`<time>${esc(d)}</time>`:''}</div>${n.content?`<p>${esc(n.content)}</p>`:''}${n.file_url?`<a href="${esc(n.file_url)}" target="_blank" rel="noreferrer">첨부파일 보기</a>`:''}</article>`}).join('')+'</div>'}
+    function renderAttendance(){const box=$('eventBox'),e=state.activeEvent;if(!e){box.innerHTML='<p class="empty">등록된 행사가 없습니다.</p>';return}const d=e.event_date?new Date(`${e.event_date}T00:00:00`).toLocaleDateString('ko-KR'):'';box.innerHTML=`<article class="event-summary"><h3>${esc(e.title||'동문회 행사')}</h3><p>${esc([d,e.place].filter(Boolean).join(' · '))}</p></article><div class="form-grid"><label>이름<input id="attName" autocomplete="name"></label><label>현재 학교<input id="attSchool" list="schoolOptions"></label></div><div class="attendance-actions"><button type="button" data-att-status="참석">참석</button><button type="button" data-att-status="불참" class="secondary">불참</button></div>`;document.querySelectorAll('[data-att-status]').forEach(b=>b.addEventListener('click',()=>submitAttendance(b.dataset.attStatus,b)))}
+    async function openEventGuide(){const btn=$('eventGuideBtn'),old=btn.textContent;btn.disabled=true;btn.textContent='불러오는 중';try{const e=state.activeEvent;if(!e?.pdf_file_url){alert('행사안내가 없습니다.');return}window.open(e.pdf_file_url,'_blank','noreferrer')}finally{btn.disabled=false;btn.textContent=old}}
+    async function registerMember(){const btn=$('registerBtn');const p={p_name:$('regName').value.trim(),p_student_no:$('regStudentNo').value.trim(),p_position:$('regPosition').value.trim(),p_school:$('regSchool').value.trim(),p_phone:$('regPhone').value.trim(),p_privacy_agreed:$('regAgree').checked};if(!p.p_name||!p.p_student_no||!p.p_privacy_agreed){showMessage('이름, 학번, 개인정보 동의를 확인해 주세요.','warn');return}await loading(btn,'등록 중',async()=>{const {data,error}=await db.rpc('register_alumni_member',p);if(error)throw error;['regName','regStudentNo','regPosition','regSchool','regPhone'].forEach(id=>$(id).value='');$('regAgree').checked=false;await loadApp();showMessage(`${data.name}님 등록이 완료되었습니다.`,'success')})}
+    async function submitAttendance(status,btn){const e=state.activeEvent;if(!e){showMessage('등록된 행사가 없습니다.','warn');return}const p={p_event_id:e.id,p_name:$('attName').value.trim(),p_school:$('attSchool').value.trim(),p_status:status};if(!p.p_name){showMessage('이름을 입력해 주세요.','warn');return}await loading(btn,'저장 중',async()=>{const {data,error}=await db.rpc('submit_event_attendance',p);if(error)throw error;await loadApp();switchView('attendance');showMessage(`${data.name}님 ${data.status}으로 저장되었습니다.`,'success')})}
+    async function loading(btn,text,fn){const old=btn.textContent;btn.disabled=true;btn.textContent=text;try{await fn()}catch(e){console.error(e);showMessage(e.message||'처리 중 문제가 생겼습니다.','warn')}finally{btn.disabled=false;btn.textContent=old}}
+    function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+    document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>switchView(b.dataset.view)));$('eventGuideBtn').addEventListener('click',openEventGuide);$('registerBtn').addEventListener('click',registerMember);switchView('notices');loadApp().catch(e=>{console.error(e);showMessage('자료를 불러오지 못했습니다. Supabase 설정을 확인해 주세요.','warn')});
+  </script>
 </body>
 </html>
