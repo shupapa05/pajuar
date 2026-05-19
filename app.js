@@ -20,5 +20,64 @@ async function saveAttendance(status){const event_id=$('attEvent').value,name=$(
 function adminLogin(){if($('adminPin').value.trim()===APP.pin){$('adminPanel')?.classList.remove('hidden');msg('adminMsg','관리자 로그인 성공','success');loadMembers();}else msg('adminMsg','PIN 오류','error');}
 async function loadMembers(){const {data}=await db.from('members').select('*').order('school').order('name');$('memberList').innerHTML=(data||[]).map(m=>`<div class="item">${m.school||''} / ${m.position||''} / ${m.name||''} / ${m.generation||''}기 / ${m.phone||''}</div>`).join('');}
 async function saveNotice(){const title=$('noticeTitle').value.trim(),content=$('noticeContent').value.trim();if(!title)return msg('adminMsg','공지 제목을 입력해주세요.','error');const {error}=await db.from('notices').insert([{year:APP.year,title,content,is_public:true,important:false}]);if(error)return msg('adminMsg','공지 저장 실패','error');msg('adminMsg','공지 저장 완료','success');loadNotices();}
-async function saveEvent(){const p={year:APP.year,title:$('eventTitle').value.trim(),event_date:$('eventDate').value,place:$('eventPlace').value.trim(),content:$('eventContent').value.trim(),pdf_file_url:$('eventFileUrl').value.trim(),active:true,sort_order:1};const {error}=await db.from('events').insert([p]);if(error)return msg('adminMsg','행사 저장 실패','error');msg('adminMsg','행사 저장 완료','success');loadEvents();}
+async function saveEvent() {
+  // pdf 입력값 여러개 수집
+  const pdfNames = document.querySelectorAll(".file-name");
+  const pdfUrls = document.querySelectorAll(".file-url");
+  const pdfs = [];
+  for (let i = 0; i < pdfNames.length; i++) {
+    if(pdfNames[i].value && pdfUrls[i].value){
+      pdfs.push({name: pdfNames[i].value.trim(), url: pdfUrls[i].value.trim()});
+    }
+  }
+
+  const p = {
+    year: APP.year,
+    title: $('eventTitle').value.trim(),
+    event_date: $('eventDate').value,
+    place: $('eventPlace').value.trim(),
+    content: $('eventContent').value.trim(),
+    pdfs: pdfs, // 배열로 변경
+    active: true,
+    sort_order: 1
+  };
+
+  const { error } = await db.from('events').insert([p]);
+  if (error) return msg('adminMsg', '행사 저장 실패', 'error');
+  msg('adminMsg', '행사 저장 완료', 'success');
+  loadEvents();
+}
+function setupFileInputs() {
+  document.getElementById("addFileBtn").addEventListener("click", () => {
+    const container = document.getElementById("fileInputs");
+    const row = document.createElement("div");
+    row.classList.add("file-row");
+    row.innerHTML = `
+      <input type="text" placeholder="파일명" class="file-name">
+      <input type="text" placeholder="URL" class="file-url">
+      <button type="button" class="removeFileBtn">삭제</button>
+    `;
+    container.appendChild(row);
+
+    row.querySelector(".removeFileBtn").addEventListener("click", () => row.remove());
+  });
+}
+function displayEventDetail(event) {
+  const container = document.getElementById("eventDetailContainer");
+  container.innerHTML = `<h2>${event.title}</h2><p>${event.content}</p>`;
+
+  if (!event.pdfs || event.pdfs.length === 0) return;
+
+  if (event.pdfs.length === 1) {
+    container.innerHTML += `<a href="${event.pdfs[0].url}" target="_blank">${event.pdfs[0].name}</a>`;
+  } else {
+    const list = document.createElement("ul");
+    event.pdfs.forEach(pdf => {
+      const li = document.createElement("li");
+      li.innerHTML = `<a href="${pdf.url}" target="_blank">${pdf.name}</a>`;
+      list.appendChild(li);
+    });
+    container.appendChild(list);
+  }
+}
 addEventListener('DOMContentLoaded',async()=>{await loadSettings();setupAdmin();await loadNotices();await loadSchools();await loadEvents();});
