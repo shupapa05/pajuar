@@ -1,6 +1,8 @@
+const URL='https://lemwzcchuazqpsyzsoff.supabase.co';
+const KEY='sb_publishable_dXOuhuPizNsQgCXtqQYY4A_DBk6WCGV';
+const db=window.supabase.createClient(URL,KEY);
 const APP={year:new Date().getFullYear(),pin:'1234'};
 const $=id=>document.getElementById(id);
-
 function msg(id,t,c=''){const e=$(id);if(e){e.className='msg '+c;e.textContent=t;}}
 function allSections(){return Array.from(document.querySelectorAll('main>section'));}
 function showView(v){allSections().forEach(s=>s.classList.add('hidden'));if(v==='home'){allSections().forEach(s=>s.classList.remove('hidden'));['register','attendance','admin'].forEach(x=>$(x)?.classList.add('hidden'));window.scrollTo(0,0);return;}$(v)?.classList.remove('hidden');window.scrollTo(0,0);}
@@ -9,42 +11,14 @@ function setupAdmin(){document.querySelectorAll('button').forEach(b=>{if(b.textC
 function gen(v){const n=Number(String(v||'').replace(/\D/g,'').slice(-2));if(isNaN(n))return'';return n>=62?String(n-61):String(n+39);}
 function fee(p){return ['교장','장학관'].includes(p)?100000:['교감','장학사'].includes(p)?80000:60000;}
 function dateKo(v){const d=new Date(v);return isNaN(d)?'':`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`;}
-
-async function loadMembers(){
-  const {data} = await db.from('members').select('*').order('school').order('name');
-  $('memberList').innerHTML=(data||[]).map(m=>`<div class="item">${m.school||''} / ${m.position||''} / ${m.name||''} / ${m.generation||''}기 / ${m.phone||''}</div>`).join('');
-}
-
-async function saveNotice(){
-  const title = $('noticeTitle').value.trim(), content = $('noticeContent').value.trim();
-  if(!title) return msg('adminMsg','공지 제목을 입력해주세요.','error');
-  const {error} = await db.from('notices').insert([{year:APP.year,title,content,is_public:true,important:false}]);
-  if(error) return msg('adminMsg','공지 저장 실패','error');
-  msg('adminMsg','공지 저장 완료','success');
-  loadNotices();
-}
-
-async function saveEvent(){
-  const p = {
-    year: APP.year,
-    title: $('eventTitle').value.trim(),
-    event_date: $('eventDate').value,
-    place: $('eventPlace').value.trim(),
-    content: $('eventContent').value.trim(),
-    pdf_file_url: $('eventFileUrl').value.trim(),
-    active: true,
-    sort_order: 1
-  };
-  const {error} = await db.from('events').insert([p]);
-  if(error) return msg('adminMsg','행사 저장 실패','error');
-  msg('adminMsg','행사 저장 완료','success');
-  loadEvents();
-}
-
-addEventListener('DOMContentLoaded',async()=>{
-  setupAdmin();
-  await loadSettings();
-  await loadNotices();
-  await loadSchools();
-  await loadEvents();
-});
+async function loadSettings(){const {data}=await db.from('app_settings').select('key,value');const m=Object.fromEntries((data||[]).map(x=>[x.key,x.value]));APP.year=Number(m.CURRENT_YEAR||APP.year);APP.pin=String(m.ADMIN_PIN||APP.pin).trim();if($('alumniName'))$('alumniName').textContent=m.ALUMNI_NAME||'경인교대 파주동문회';}
+async function loadNotices(){const box=$('noticeList');const {data,error}=await db.from('notices').select('*').eq('year',APP.year).eq('is_public',true).order('important',{ascending:false}).order('created_at',{ascending:false});if(error){box.textContent='공지사항 로드 실패';return;}box.innerHTML=(data||[]).map(n=>`<div class="item"><b>${n.important?'[중요] ':''}${n.title||''}</b><div class="muted">${dateKo(n.created_at)}</div><div>${String(n.content||'').replace(/\n/g,'<br>')}</div></div>`).join('')||'공지사항이 없습니다.';}
+async function loadSchools(){const {data}=await db.from('schools').select('name').eq('active',true).order('sort_order');if($('regSchool'))$('regSchool').innerHTML='<option value="">학교 선택</option>'+(data||[]).map(s=>`<option>${s.name}</option>`).join('');}
+async function loadEvents(){const {data}=await db.from('events').select('*').eq('year',APP.year).eq('active',true).order('sort_order');if($('attEvent'))$('attEvent').innerHTML=(data||[]).map(e=>`<option value="${e.id}">${e.title}</option>`).join('');}
+async function registerMember(){const name=$('regName').value.trim(),student_no=$('regStudentNo').value.trim(),phone=$('regPhone').value.trim(),position=$('regPosition').value,school=$('regSchool').value;if(!name||!student_no||!phone||!position||!school)return msg('registerMsg','모든 항목을 입력해주세요.','error');if(!$('regAgree').checked)return msg('registerMsg','개인정보 동의가 필요합니다.','error');const generation=gen(student_no);const {data:m,error}=await db.from('members').insert([{name,student_no,generation,phone,position,school,privacy_agreed:true}]).select('id').single();if(error)return msg('registerMsg','회원등록 실패: '+error.message,'error');await db.from('yearly_memberships').insert([{year:APP.year,member_id:m.id,name,position,school,phone,privacy_agreed:true}]);await db.from('fee_payments').insert([{year:APP.year,member_id:m.id,paid:false,amount:fee(position)}]);msg('registerMsg',`${name}님 등록 완료`,'success');}
+async function saveAttendance(status){const event_id=$('attEvent').value,name=$('attName').value.trim();if(!event_id||!name)return msg('attendanceMsg','행사와 이름을 입력해주세요.','error');const {data:ms}=await db.from('members').select('*').eq('name',name).limit(1);const m=(ms||[])[0]||{};const {error}=await db.from('event_attendance').insert([{year:APP.year,event_id,member_id:m.id||null,name,generation:m.generation||'',school:m.school||'',position:m.position||'',status}]);if(error)return msg('attendanceMsg','저장 실패: '+error.message,'error');msg('attendanceMsg','저장 완료','success');}
+function adminLogin(){if($('adminPin').value.trim()===APP.pin){$('adminPanel')?.classList.remove('hidden');msg('adminMsg','관리자 로그인 성공','success');loadMembers();}else msg('adminMsg','PIN 오류','error');}
+async function loadMembers(){const {data}=await db.from('members').select('*').order('school').order('name');$('memberList').innerHTML=(data||[]).map(m=>`<div class="item">${m.school||''} / ${m.position||''} / ${m.name||''} / ${m.generation||''}기 / ${m.phone||''}</div>`).join('');}
+async function saveNotice(){const title=$('noticeTitle').value.trim(),content=$('noticeContent').value.trim();if(!title)return msg('adminMsg','공지 제목을 입력해주세요.','error');const {error}=await db.from('notices').insert([{year:APP.year,title,content,is_public:true,important:false}]);if(error)return msg('adminMsg','공지 저장 실패','error');msg('adminMsg','공지 저장 완료','success');loadNotices();}
+async function saveEvent(){const p={year:APP.year,title:$('eventTitle').value.trim(),event_date:$('eventDate').value,place:$('eventPlace').value.trim(),content:$('eventContent').value.trim(),pdf_file_url:$('eventFileUrl').value.trim(),active:true,sort_order:1};const {error}=await db.from('events').insert([p]);if(error)return msg('adminMsg','행사 저장 실패','error');msg('adminMsg','행사 저장 완료','success');loadEvents();}
+addEventListener('DOMContentLoaded',async()=>{await loadSettings();setupAdmin();await loadNotices();await loadSchools();await loadEvents();});
