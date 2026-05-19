@@ -3,111 +3,81 @@ const KEY='sb_publishable_dXOuhuPizNsQgCXtqQYY4A_DBk6WCGV';
 const db=window.supabase.createClient(URL,KEY);
 const APP={year:new Date().getFullYear(),pin:'1234'};
 const $=id=>document.getElementById(id);
-
 function msg(id,t,c=''){const e=$(id);if(e){e.className='msg '+c;e.textContent=t;}}
 function allSections(){return Array.from(document.querySelectorAll('main>section'));}
 function showView(v){allSections().forEach(s=>s.classList.add('hidden'));if(v==='home'){allSections().forEach(s=>s.classList.remove('hidden'));['register','attendance','admin'].forEach(x=>$(x)?.classList.add('hidden'));window.scrollTo(0,0);return;}$(v)?.classList.remove('hidden');window.scrollTo(0,0);}
 function openAdminWindow(){window.open('index.html?admin=1','_blank');}
 function setupAdmin(){document.querySelectorAll('button').forEach(b=>{if(b.textContent.trim()==='관리자')b.onclick=()=>openAdminWindow();});if(location.search.includes('admin=1'))showView('admin');}
+function gen(v){const n=Number(String(v||'').replace(/\D/g,'').slice(-2));if(isNaN(n))return'';return n>=62?String(n-61):String(n+39);}
+function fee(p){return ['교장','장학관'].includes(p)?100000:['교감','장학사'].includes(p)?80000:60000;}
+function dateKo(v){const d=new Date(v);return isNaN(d)?'':`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`;}
+async function loadSettings(){const {data}=await db.from('app_settings').select('key,value');const m=Object.fromEntries((data||[]).map(x=>[x.key,x.value]));APP.year=Number(m.CURRENT_YEAR||APP.year);APP.pin=String(m.ADMIN_PIN||APP.pin).trim();if($('alumniName'))$('alumniName').textContent=m.ALUMNI_NAME||'경인교대 파주동문회';}
+async function loadNotices(){const box=$('noticeList');const {data,error}=await db.from('notices').select('*').eq('year',APP.year).eq('is_public',true).order('important',{ascending:false}).order('created_at',{ascending:false});if(error){box.textContent='공지사항 로드 실패';return;}box.innerHTML=(data||[]).map(n=>`<div class="item"><b>${n.important?'[중요] ':''}${n.title||''}</b><div class="muted">${dateKo(n.created_at)}</div><div>${String(n.content||'').replace(/\n/g,'<br>')}</div></div>`).join('')||'공지사항이 없습니다.';}
+async function loadSchools(){const {data}=await db.from('schools').select('name').eq('active',true).order('sort_order');if($('regSchool'))$('regSchool').innerHTML='<option value="">학교 선택</option>'+(data||[]).map(s=>`<option>${s.name}</option>`).join('');}
+async function loadEvents(){const {data}=await db.from('events').select('*').eq('year',APP.year).eq('active',true).order('sort_order');if($('attEvent'))$('attEvent').innerHTML=(data||[]).map(e=>`<option value="${e.id}">${e.title}</option>`).join('');}
+async function registerMember(){const name=$('regName').value.trim(),student_no=$('regStudentNo').value.trim(),phone=$('regPhone').value.trim(),position=$('regPosition').value,school=$('regSchool').value;if(!name||!student_no||!phone||!position||!school)return msg('registerMsg','모든 항목을 입력해주세요.','error');if(!$('regAgree').checked)return msg('registerMsg','개인정보 동의가 필요합니다.','error');const generation=gen(student_no);const {data:m,error}=await db.from('members').insert([{name,student_no,generation,phone,position,school,privacy_agreed:true}]).select('id').single();if(error)return msg('registerMsg','회원등록 실패: '+error.message,'error');await db.from('yearly_memberships').insert([{year:APP.year,member_id:m.id,name,position,school,phone,privacy_agreed:true}]);await db.from('fee_payments').insert([{year:APP.year,member_id:m.id,paid:false,amount:fee(position)}]);msg('registerMsg',`${name}님 등록 완료`,'success');}
+async function saveAttendance(status){const event_id=$('attEvent').value,name=$('attName').value.trim();if(!event_id||!name)return msg('attendanceMsg','행사와 이름을 입력해주세요.','error');const {data:ms}=await db.from('members').select('*').eq('name',name).limit(1);const m=(ms||[])[0]||{};const {error}=await db.from('event_attendance').insert([{year:APP.year,event_id,member_id:m.id||null,name,generation:m.generation||'',school:m.school||'',position:m.position||'',status}]);if(error)return msg('attendanceMsg','저장 실패: '+error.message,'error');msg('attendanceMsg','저장 완료','success');}
+function adminLogin(){if($('adminPin').value.trim()===APP.pin){$('adminPanel')?.classList.remove('hidden');msg('adminMsg','관리자 로그인 성공','success');loadMembers();}else msg('adminMsg','PIN 오류','error');}
+async function loadMembers(){const {data}=await db.from('members').select('*').order('school').order('name');$('memberList').innerHTML=(data||[]).map(m=>`<div class="item">${m.school||''} / ${m.position||''} / ${m.name||''} / ${m.generation||''}기 / ${m.phone||''}</div>`).join('');}
+async function saveNotice(){const title=$('noticeTitle').value.trim(),content=$('noticeContent').value.trim();if(!title)return msg('adminMsg','공지 제목을 입력해주세요.','error');const {error}=await db.from('notices').insert([{year:APP.year,title,content,is_public:true,important:false}]);if(error)return msg('adminMsg','공지 저장 실패','error');msg('adminMsg','공지 저장 완료','success');loadNotices();}
+async function saveEvent() {
+  // pdf 입력값 여러개 수집
+  const pdfNames = document.querySelectorAll(".file-name");
+  const pdfUrls = document.querySelectorAll(".file-url");
+  const pdfs = [];
+  for (let i = 0; i < pdfNames.length; i++) {
+    if(pdfNames[i].value && pdfUrls[i].value){
+      pdfs.push({name: pdfNames[i].value.trim(), url: pdfUrls[i].value.trim()});
+    }
+  }
 
-// PDF 첨부 2개 이상 지원
-function setupEventFileInputs() {
-  const addBtn = $('addFileBtn');
-  if(!addBtn) return;
-  addBtn.addEventListener('click', () => {
-    const container = $('fileInputs');
-    const row = document.createElement('div');
-    row.classList.add('file-row');
+  const p = {
+    year: APP.year,
+    title: $('eventTitle').value.trim(),
+    event_date: $('eventDate').value,
+    place: $('eventPlace').value.trim(),
+    content: $('eventContent').value.trim(),
+    pdfs: pdfs, // 배열로 변경
+    active: true,
+    sort_order: 1
+  };
+
+  const { error } = await db.from('events').insert([p]);
+  if (error) return msg('adminMsg', '행사 저장 실패', 'error');
+  msg('adminMsg', '행사 저장 완료', 'success');
+  loadEvents();
+}
+function setupFileInputs() {
+  document.getElementById("addFileBtn").addEventListener("click", () => {
+    const container = document.getElementById("fileInputs");
+    const row = document.createElement("div");
+    row.classList.add("file-row");
     row.innerHTML = `
-      <input type="text" class="file-name" placeholder="파일명">
-      <input type="text" class="file-url" placeholder="PDF 주소">
+      <input type="text" placeholder="파일명" class="file-name">
+      <input type="text" placeholder="URL" class="file-url">
       <button type="button" class="removeFileBtn">삭제</button>
     `;
     container.appendChild(row);
-    row.querySelector('.removeFileBtn').addEventListener('click',()=>row.remove());
+
+    row.querySelector(".removeFileBtn").addEventListener("click", () => row.remove());
   });
 }
+function displayEventDetail(event) {
+  const container = document.getElementById("eventDetailContainer");
+  container.innerHTML = `<h2>${event.title}</h2><p>${event.content}</p>`;
 
-async function uploadEventPdfIfNeeded(fileInput){
-  const file = fileInput.files && fileInput.files[0];
-  if(!file) return null;
-  if(file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) throw Error('PDF 파일만 첨부 가능합니다.');
-  const safe = file.name.replace(/[^a-zA-Z0-9_.-]/g,'_');
-  const path = 'event-'+Date.now()+'-'+safe;
-  const up = await db.storage.from('event-guides').upload(path,file,{contentType:'application/pdf',upsert:false});
-  if(up.error) throw up.error;
-  const pub = db.storage.from('event-guides').getPublicUrl(path);
-  return {name:file.name,url:pub.data.publicUrl};
-}
+  if (!event.pdfs || event.pdfs.length === 0) return;
 
-// 행사 저장
-async function saveEvent(){
-  try{
-    const btn = $('saveEventBtn');
-    btn.disabled=true;
-    btn.textContent='저장 중...';
-
-    const rows = document.querySelectorAll('#fileInputs .file-row');
-    const pdfFiles = [];
-    for(const row of rows){
-      const fileInput = row.querySelector('input[type="file"]');
-      let pdf=null;
-      if(fileInput && fileInput.files && fileInput.files[0]){
-        pdf = await uploadEventPdfIfNeeded(fileInput);
-      } else {
-        const name = row.querySelector('.file-name')?.value.trim();
-        const url = row.querySelector('.file-url')?.value.trim();
-        if(name && url) pdf={name,url};
-      }
-      if(pdf) pdfFiles.push(pdf);
-    }
-
-    const id = $('eventId').value || null;
-    const current = (S.adminEvents||[]).find(e=>e.id===id);
-
-    await rpc('admin_save_event',{
-      p_pin:S.pin,
-      p_id:id,
-      p_title:$('eventTitle').value,
-      p_event_date:$('eventDate').value||null,
-      p_place:$('eventPlace').value,
-      p_content:$('eventContent').value,
-      p_pdf_files: pdfFiles,
-      p_active: current?!!current.active:false
-    });
-
-    resetEventForm();
-    await loadAdmin();
-    await loadPublic();
-    msg('adminMsg','행사를 저장했습니다. 안내 여부는 행사 목록의 회원 안내 선택 버튼에서 설정합니다.','ok');
-  } catch(e){
-    msg('adminMsg',e.message,'bad');
-  } finally {
-    const btn = $('saveEventBtn');
-    btn.disabled=false;
-    btn.textContent='행사 저장';
-  }
-}
-
-// 회원용 안내 UI
-async function guide(){
-  const e = activeEvent();
-  if(!e || !e.pdf_files || !e.pdf_files.length){
-    alert('행사 안내가 없습니다.');
-    return;
-  }
-  if(e.pdf_files.length===1){
-    window.open(e.pdf_files[0].url,'_blank');
+  if (event.pdfs.length === 1) {
+    container.innerHTML += `<a href="${event.pdfs[0].url}" target="_blank">${event.pdfs[0].name}</a>`;
   } else {
-    const choice = prompt('다음 자료 중 선택:\n'+e.pdf_files.map((f,i)=>`${i+1}. ${f.name}`).join('\n'));
-    const idx = parseInt(choice,10);
-    if(idx>0 && idx<=e.pdf_files.length) window.open(e.pdf_files[idx-1].url,'_blank');
+    const list = document.createElement("ul");
+    event.pdfs.forEach(pdf => {
+      const li = document.createElement("li");
+      li.innerHTML = `<a href="${pdf.url}" target="_blank">${pdf.name}</a>`;
+      list.appendChild(li);
+    });
+    container.appendChild(list);
   }
 }
-
-// 초기화
-document.addEventListener('DOMContentLoaded',()=>{
-  setupEventFileInputs();
-  $('saveEventBtn').onclick = saveEvent;
-  $('guideBtn').onclick = guide;
-});
+addEventListener('DOMContentLoaded',async()=>{await loadSettings();setupAdmin();await loadNotices();await loadSchools();await loadEvents();});
