@@ -70,13 +70,7 @@
         <input id="eventDate" type="date">
         <input id="eventPlace" placeholder="장소">
         <textarea id="eventContent" placeholder="내용"></textarea>
-        <div id="fileInputs">
-          <div class="file-row">
-            <input type="text" class="file-name" placeholder="파일명">
-            <input type="text" class="file-url" placeholder="PDF 주소">
-            <button type="button" class="removeFileBtn">삭제</button>
-          </div>
-        </div>
+        <div id="fileInputs"></div>
         <button type="button" id="addFileBtn">파일 추가</button>
         <button id="saveEventBtn">행사 저장</button>
       </div>
@@ -84,5 +78,16 @@
     </section>
   </main>
   <script src="app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // adminPanel 존재할 때만 파일 입력 기능 바인딩
+      const adminPanel = document.getElementById('adminPanel');
+      if(adminPanel){
+        setupFileInputs();
+        const saveBtn = document.getElementById('saveEventBtn');
+        if(saveBtn) saveBtn.addEventListener('click', saveEvent);
+      }
+    });
+  </script>
 </body>
 </html>
