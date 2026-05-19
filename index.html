@@ -1,4 +1,5 @@
 <!doctype html>
+
 <html lang="ko">
 <head>
   <meta charset="utf-8">
@@ -9,85 +10,82 @@
 </head>
 <body>
   <main class="wrap">
-    <section class="hero card">
-      <h1 id="alumniName">경인교대 파주동문회</h1>
-      <p class="muted">공지사항은 누구나 볼 수 있고, 회원은 올해 정보만 등록합니다.</p>
-      <div class="row center">
-        <button onclick="showView('register')">회원등록</button>
-        <button onclick="showView('attendance')">행사참석</button>
-        <button onclick="showView('admin')">관리자</button>
-      </div>
-    </section>
 
-    <section class="card">
-      <h2>공지사항</h2>
-      <div id="noticeList" class="muted">불러오는 중...</div>
-    </section>
+```
+<section class="hero card">
+  <h1 id="alumniName">경인교대 파주동문회</h1>
+  <p class="muted">공지사항은 누구나 볼 수 있고, 회원은 올해 정보만 등록합니다.</p>
+  <div class="row center">
+    <button onclick="showView('register')">회원등록</button>
+    <button onclick="showView('attendance')">행사참석</button>
+    <button onclick="showView('admin')">관리자</button>
+  </div>
+</section>
 
-    <section id="register" class="card hidden">
-      <h2>회원등록</h2>
-      <input id="regName" placeholder="이름">
-      <input id="regStudentNo" placeholder="학번 예: 99">
-      <input id="regPhone" placeholder="연락처">
-      <select id="regPosition">
-        <option value="">직위 선택</option>
-        <option>교사</option><option>교감</option><option>교장</option><option>늘봄실장</option><option>장학사</option><option>장학관</option>
-      </select>
-      <select id="regSchool"></select>
-      <label class="check"><input id="regAgree" type="checkbox"> 개인정보 수집 및 활용 동의</label>
-      <div class="row">
-        <button onclick="registerMember()">등록</button>
-        <button class="light" onclick="showView('home')">닫기</button>
-      </div>
-      <div id="registerMsg" class="msg"></div>
-    </section>
+<section class="card">
+  <h2>공지사항</h2>
+  <div id="noticeList" class="muted">불러오는 중...</div>
+</section>
 
-    <section id="attendance" class="card hidden">
-      <h2>행사참석</h2>
-      <select id="attEvent"></select>
-      <input id="attName" placeholder="이름">
-      <div class="row">
-        <button onclick="saveAttendance('참석')">참석</button>
-        <button onclick="saveAttendance('불참')">불참</button>
-        <button class="light" onclick="showView('home')">닫기</button>
-      </div>
-      <div id="attendanceMsg" class="msg"></div>
-    </section>
+<section id="register" class="card hidden">
+  <h2>회원등록</h2>
+  <input id="regName" placeholder="이름">
+  <input id="regStudentNo" placeholder="학번 예: 99">
+  <input id="regPhone" placeholder="연락처">
+  <select id="regPosition">
+    <option value="">직위 선택</option>
+    <option>교사</option>
+    <option>교감</option>
+    <option>교장</option>
+    <option>늘봄실장</option>
+    <option>장학사</option>
+    <option>장학관</option>
+  </select>
+  <select id="regSchool"></select>
+  <label class="check"><input id="regAgree" type="checkbox"> 개인정보 수집 및 활용 동의</label>
+  <div class="row">
+    <button onclick="registerMember()">등록</button>
+    <button class="light" onclick="showView('home')">닫기</button>
+  </div>
+  <div id="registerMsg" class="msg"></div>
+</section>
 
-    <section id="admin" class="card hidden">
-      <h2>관리자</h2>
-      <input id="adminPin" type="password" placeholder="관리자 PIN">
-      <button onclick="adminLogin()">로그인</button>
-      <div id="adminPanel" class="hidden">
-        <h3>회원명단</h3>
-        <div id="memberList"></div>
-        <h3>공지 작성</h3>
-        <input id="noticeTitle" placeholder="제목">
-        <textarea id="noticeContent" placeholder="내용"></textarea>
-        <button onclick="saveNotice()">공지 저장</button>
-        <h3>행사 작성</h3>
-        <input id="eventTitle" placeholder="행사명">
-        <input id="eventDate" type="date">
-        <input id="eventPlace" placeholder="장소">
-        <textarea id="eventContent" placeholder="내용"></textarea>
-        <div id="fileInputs"></div>
-        <button type="button" id="addFileBtn">파일 추가</button>
-        <button id="saveEventBtn">행사 저장</button>
-      </div>
-      <div id="adminMsg" class="msg"></div>
-    </section>
+<section id="attendance" class="card hidden">
+  <h2>행사참석</h2>
+  <select id="attEvent"></select>
+  <input id="attName" placeholder="이름">
+  <div class="row">
+    <button onclick="saveAttendance('참석')">참석</button>
+    <button onclick="saveAttendance('불참')">불참</button>
+    <button class="light" onclick="showView('home')">닫기</button>
+  </div>
+  <div id="attendanceMsg" class="msg"></div>
+</section>
+
+<section id="admin" class="card hidden">
+  <h2>관리자</h2>
+  <input id="adminPin" type="password" placeholder="관리자 PIN">
+  <button onclick="adminLogin()">로그인</button>
+  <div id="adminPanel" class="hidden">
+    <h3>회원명단</h3>
+    <div id="memberList"></div>
+    <h3>공지 작성</h3>
+    <input id="noticeTitle" placeholder="제목">
+    <textarea id="noticeContent" placeholder="내용"></textarea>
+    <button onclick="saveNotice()">공지 저장</button>
+    <h3>행사 작성</h3>
+    <input id="eventTitle" placeholder="행사명">
+    <input id="eventDate" type="date">
+    <input id="eventPlace" placeholder="장소">
+    <textarea id="eventContent" placeholder="내용"></textarea>
+    <input id="eventFileUrl" placeholder="안내자료 URL">
+    <button onclick="saveEvent()">행사 저장</button>
+  </div>
+  <div id="adminMsg" class="msg"></div>
+</section>
+```
+
   </main>
   <script src="app.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // adminPanel 존재할 때만 파일 입력 기능 바인딩
-      const adminPanel = document.getElementById('adminPanel');
-      if(adminPanel){
-        setupFileInputs();
-        const saveBtn = document.getElementById('saveEventBtn');
-        if(saveBtn) saveBtn.addEventListener('click', saveEvent);
-      }
-    });
-  </script>
 </body>
 </html>
