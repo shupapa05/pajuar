@@ -1,0 +1,39 @@
+name: Keep Supabase active
+
+on:
+  schedule:
+    # 09:17 and 21:17 Korea Standard Time
+    - cron: "17 0,12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keep-supabase-active
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call public alumni data RPC
+        env:
+          SUPABASE_URL: https://lemwzcchuazqpsyzsoff.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_dXOuhuPizNsQgCXtqQYY4A_DBk6WCGV
+        run: |
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --retry 3 \
+            --retry-all-errors \
+            --connect-timeout 15 \
+            --max-time 60 \
+            --request POST \
+            --header "apikey: ${SUPABASE_PUBLISHABLE_KEY}" \
+            --header "Authorization: Bearer ${SUPABASE_PUBLISHABLE_KEY}" \
+            --header "Content-Type: application/json" \
+            --data '{}' \
+            "${SUPABASE_URL}/rest/v1/rpc/get_public_alumni_app_data"
